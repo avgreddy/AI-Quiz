@@ -7,7 +7,11 @@ from dotenv import load_dotenv
 import google.generativeai as genai
 
 # Load environment variables
-load_dotenv()
+from dotenv import dotenv_values
+
+env_values = dotenv_values(".env")  # Manually load .env variables
+GOOGLE_API_KEY = env_values.get("GOOGLE_API_KEY")
+
 
 # Configure Google Gemini AI
 GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
