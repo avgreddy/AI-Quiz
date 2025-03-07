@@ -69,3 +69,5 @@ This project is licensed under the MIT License.
 ## 👨‍💻 Author
 Developed by [avgreddy](https://github.com/avgreddy). Contributions welcome! 🚀
 
+## link
+https://aiquizgenerator.streamlit.app
