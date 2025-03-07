@@ -2,6 +2,8 @@
 
 ## 📌 Overview
 The **AI Quiz Generator** is a Streamlit-based web application that creates multiple-choice quizzes from any given text. Using Google's Gemini AI, the app generates quiz questions, provides interactive answering options, and offers real-time feedback on responses.
+## Try the App here: [link](https://aiquizgenerator.streamlit.app)
+
 
 ## 🚀 Features
 - ✅ AI-generated multiple-choice questions (MCQs)
@@ -69,5 +71,3 @@ This project is licensed under the MIT License.
 ## 👨‍💻 Author
 Developed by [avgreddy](https://github.com/avgreddy). Contributions welcome! 🚀
 
-## link
-https://aiquizgenerator.streamlit.app
