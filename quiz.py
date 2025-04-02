@@ -13,11 +13,6 @@ load_dotenv()
 GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
 genai.configure(api_key=GOOGLE_API_KEY)
 
-
-# Configure Google Gemini AI
-GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
-genai.configure(api_key=GOOGLE_API_KEY)
-
 # Initialize Gemini model
 model = genai.GenerativeModel("gemini-1.5-flash-002")
 
@@ -72,7 +67,7 @@ st.sidebar.write(
 
 # Function to determine countdown timer duration
 def get_timer_duration(difficulty, num_questions):
-    base_time_per_question = {"Easy": 30, "Medium": 45, "Hard": 60}  # Time in seconds
+    base_time_per_question = {"Easy": 30, "Medium": 60, "Hard": 90}  # Time in seconds
     return base_time_per_question[difficulty] * num_questions
 
 # Function to extract valid JSON from AI response
@@ -88,47 +83,64 @@ def extract_json(text):
 def fetch_questions(text_content, quiz_level, num_questions):
     if not text_content.strip():
         return [], "❌ Error: No text provided!"
+    
+    questions = []
+    batch_size = 10  # Fetch 10 questions per request to avoid AI truncation issues
 
-    PROMPT_TEMPLATE = f"""
-    You are an AI quiz generator. Based on the provided text, generate exactly {num_questions} multiple-choice questions at the '{quiz_level}' difficulty level.
+    for i in range(0, num_questions, batch_size):
+        current_batch = min(batch_size, num_questions - i)
+        
+        PROMPT_TEMPLATE = f"""
+        You are an AI quiz generator. Based on the provided text, generate **exactly {current_batch}** multiple-choice questions at the '{quiz_level}' difficulty level.
 
-    TEXT:
-    {text_content}
+        TEXT:
+        {text_content}
 
-    Return the output strictly in this JSON format:
+        Return the output strictly in this JSON format:
 
-    {{
-        "mcqs": [
-            {{
-                "mcq": "Question 1?",
-                "options": {{
-                    "a": "Option A",
-                    "b": "Option B",
-                    "c": "Option C",
-                    "d": "Option D"
+        {{
+            "mcqs": [
+                {{
+                    "mcq": "Question 1?",
+                    "options": {{
+                        "a": "Option A",
+                        "b": "Option B",
+                        "c": "Option C",
+                        "d": "Option D"
+                    }},
+                    "correct": "a",
+                    "explanation": "A detailed explanation for the correct answer."
                 }},
-                "correct": "a",
-                "explanation": "A detailed explanation for the correct answer."
-            }},
-            ...
-        ]
-    }}
+                ...
+            ]
+        }}
 
-    Ensure that exactly {num_questions} questions are included.
-    """
+        Ensure that **exactly {current_batch} questions** are included.
+        """
 
-    try:
-        response = model.generate_content(PROMPT_TEMPLATE)
-        if not response or not response.text:
-            return [], "❌ Error: Empty response from AI!"
+        try:
+            response = model.generate_content(PROMPT_TEMPLATE)
+            if not response or not response.text:
+                return questions, "❌ Error: Empty response from AI!"
 
-        extracted_response = extract_json(response.text)
-        if extracted_response and "mcqs" in extracted_response and len(extracted_response["mcqs"]) == num_questions:
-            return extracted_response["mcqs"], None
-        else:
-            return [], "❌ Error: Incorrect number of questions generated!"
-    except Exception as e:
-        return [], f"❌ AI Request Error: {str(e)}"
+            extracted_response = extract_json(response.text)
+            if extracted_response and "mcqs" in extracted_response:
+                questions.extend(extracted_response["mcqs"])
+
+            # If AI didn't return enough, retry fetching missing questions
+            if len(questions) < num_questions:
+                remaining = num_questions - len(questions)
+                st.warning(f"⚠️ AI only generated {len(questions)} questions. Fetching {remaining} more...")
+                time.sleep(2)  # Small delay before retrying
+
+        except Exception as e:
+            return questions, f"❌ AI Request Error: {str(e)}"
+
+    if len(questions) < num_questions:
+        return questions, f"⚠️ AI could only generate {len(questions)} out of {num_questions}."
+
+    return questions, None
+
 
 def main():
     st.title("✨ AI-Powered Quiz Generator 🎓")
@@ -147,7 +159,7 @@ def main():
         quiz_level = st.selectbox("🎚 Select difficulty:", ["Easy", "Medium", "Hard"])
 
     with col2:
-        num_questions = st.number_input("🔢 Number of questions:", min_value=1, max_value=20, value=5, step=1)
+        num_questions = st.number_input("🔢 Number of questions:", min_value=1, max_value=100, value=5, step=1)
 
     # Initialize session state variables
     if "time_left" not in st.session_state:
@@ -217,10 +229,10 @@ def main():
         for i, question in enumerate(st.session_state.questions):
             st.markdown(f"**Q{i+1}. {question['mcq']}**")
 
-            selected_letter = st.session_state.selected_options.get(i)
+            selected_letter = st.session_state.selected_options.get(i,"None")
             correct_letter = question["correct"]
             explanation = question.get("explanation", "No explanation available.")
-
+            st.write(f"Your Answer: {selected_letter.upper()} - {question['options'].get(selected_letter, 'No answer selected')} ")
             st.write(f"✅ Correct answer: **{correct_letter.upper()} - {question['options'][correct_letter]}**")
             with st.expander("📝 Show Complete Explanation"):
                 st.info(explanation)
